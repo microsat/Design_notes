@@ -10,7 +10,7 @@ from scipy import stats
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-def CalcTorque(TotalMass=10, RadiusDriveWheel=0.1, NumDriveMotor=2,DesiredAcceleration=0.25, TotalEfficiency=65.0):
+def CalcTorque(TotalMass=10, RadiusDriveWheel=0.1, NumDriveMotor=2,DesiredAcceleration=0.25, TotalEfficiency=65.0,MaxIncline=10):
    # torque = ((100/TotalEfficiency)*(DesiredAcceleration+9.81*(np.sin((np.pi*MaxIncline/180)))*TotalMass*RadiusDriveWheel)/NumDriveMotor
     return ((100/TotalEfficiency)*(DesiredAcceleration+9.81*(np.sin(np.pi*MaxIncline/180)))*TotalMass*RadiusDriveWheel)/NumDriveMotor
 
@@ -22,7 +22,7 @@ RobotVelocity = 2.5  # m/s
 MaxIncline = 32.0  # Degrees
 SupplyVoltage = 12  # Volts
 DesiredAcceleration = 0.25  # M/s^2
-DesiredOperatingTime = 240  # Min
+DesiredOperatingTime = 120  # Min
 TotalEfficiency = 65  # %
 print 'Inputs'
 print 'TotalMass ', TotalMass, ' Kg'
@@ -38,7 +38,7 @@ torque = CalcTorque(TotalMass,
                     RadiusDriveWheel,
                     NumDriveMotor,
                     DesiredAcceleration,
-                    TotalEfficiency)
+                    TotalEfficiency,MaxIncline)
 
 AngularVelocity = RobotVelocity/RadiusDriveWheel
 TotalPower = torque*AngularVelocity
@@ -72,5 +72,78 @@ for lb in weights:
                                                     RadiusDriveWheel,
                                                     NumDriveMotor,
                                                     DesiredAcceleration,
-                                                    TotalEfficiency)*141.593
+                                                    TotalEfficiency,
+                                                    MaxIncline)*141.593
+
+print'\nIncline info'
+
+Incline = (0, 5, 10, 20, 25, 30, 32, 40, 45, 50)
+print'Incline\t', 'Motor ozf-in\t', 'Current','Current + 500ma','Ah'
+for Incl in Incline:
+    torq = CalcTorque(TotalMass,
+                      RadiusDriveWheel,
+                      NumDriveMotor,
+                      DesiredAcceleration,
+                      TotalEfficiency,
+                      Incl)
+    TP = torq*AngularVelocity
+    print Incl, '\t', torq*141.593, '\t', TP/12,TP/12+0.5,(TP/12+0.5)*(DesiredOperatingTime/60)*NumDriveMotor
+
+
+print'\nMotor info'
+
+
+StallTorque = 416.6
+StallCurrent = 20000
+RatedVoltage = 12
+FreeRunCurrent = 510
+FreeRunSpeed = 313.0
+
+print '\nStall torque in oz-inch : ', StallTorque
+print 'Stall current in mA : ', StallCurrent
+print 'Rated voltage in Volts : ', RatedVoltage
+print 'Free run currennt in mA : ', FreeRunCurrent
+print 'Free run speed in RPM : ', FreeRunSpeed
+
+
+
+Resistance = RatedVoltage / StallCurrent
+
+torque1 = 0;
+torque2 = StallTorque #  oz-inch *  (1/141.611932278)= N-m;
+
+
+current1 = FreeRunCurrent  # / 1000; %mA to Amps
+current2 = StallCurrent   #/ 1000; %mA to Amps
+
+speed1 = FreeRunSpeed     #RPM = 1/9.5493 radians per sec
+speed2 = 0
+totSamples = 10
+
+slope, intercept, r_value, p_value, std_err = stats.linregress([torque1, torque2], [current1, current2])
+
+torque = np.arange(torque1,torque2,((torque2 - torque1)+1)/totSamples)
+
+current = slope*torque+intercept
+
+plt.plot(torque, current)
+
+
+print'\nIncline info'
+
+Incline = (0, 5, 10, 20, 25, 30, 32, 40, 45, 50)
+print'Incline\t', 'Motor ozf-in\t', 'Current','current_motor','Ah current_motor'
+for Incl in Incline:
+    torq = CalcTorque(TotalMass,
+                      RadiusDriveWheel,
+                      NumDriveMotor,
+                      DesiredAcceleration,
+                      TotalEfficiency,
+                      Incl)
+    TP = torq*AngularVelocity
+    current_motor = slope*(torq*141.593)+intercept
+    print Incl, '\t', torq*141.593, '\t', TP/12, current_motor/1000, \
+        (current_motor/1000)*(DesiredOperatingTime/60)*NumDriveMotor, \
+        TP,  current_motor/1000*12
+
 

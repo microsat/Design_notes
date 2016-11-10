@@ -42,7 +42,8 @@ speed = slope*torque+intercept
 
 print 'Resistance of motor = ', Resistance
 
-f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, sharex=True)
+f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+f, (ax3, ax4) = plt.subplots(2, 1, sharex=True)
 ax1.plot(torque, current)
 ax1.set_title('current vs torque')
 ax2.plot(torque, speed)
